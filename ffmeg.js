@@ -4,7 +4,8 @@ const asyncExec = util.promisify(exec);
 
 export function syncConvertToMkv(inp, out = "./output.mkv") {
   execSync(
-    `ffmpeg -protocol_whitelist file,http,https,tcp,tls,crypto -i "${inp}" -codec copy "${out}"`
+    `ffmpeg -v quiet -stats -protocol_whitelist file,http,https,tcp,tls,crypto -i "${inp}" -codec copy "${out}"`,
+    { stdio: "inherit" }
   );
 }
 export async function asyncConvertToMkv(inp, out = "./output.mkv") {
