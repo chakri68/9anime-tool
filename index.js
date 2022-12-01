@@ -164,13 +164,68 @@ function requestHandler(request) {
     });
 }
 
+await Promise.all([
+  anime_9_player.goto(`https://9anime.vc${results[anime_selection]}`, {
+    waitUntil: "domcontentloaded",
+  }),
+  anime_9_player.waitForSelector(
+    "section.block_area-episodes > div.block_area-content"
+  ),
+]);
+
+let episodeData = await anime_9_player.evaluate(() => {
+  let results = {};
+  let eps, headerEps;
+  // let headerEps = document.querySelectorAll(
+  //   ".block_area-episodes .block_area-header-tabs ul.ranges li.ep-page-item"
+  // );
+  if (!headerEps) {
+    eps = document.querySelectorAll(
+      ".block_area-episodes .block_area-content .episodes-ul a"
+    );
+  }
+  if (headerEps) {
+    results["count"] = parseInt(
+      Array.from(headerEps)[headerEps.length - 1].textContent.split("-").pop()
+    );
+  } else if (eps) {
+    Array.from(eps).map((aEl) => {
+      console.log(aEl.dataset.id);
+      results[aEl.dataset.number] = aEl.dataset.id;
+    });
+  }
+  return results;
+});
+
+if (episodeData) {
+  spinner.success({ text: "Episodes found!" });
+} else {
+  spinner.error({ text: "Something went wrong..." });
+  process.exit(1);
+}
+
+let epNumSelection = await inquirer.prompt({
+  name: "episode_number",
+  type: "number",
+  message: `Episode to download (1-${Object.keys(episodeData).length})`,
+  default() {
+    return "1";
+  },
+});
+
+let { episode_number } = epNumSelection;
+
+spinner.start({ text: `Getting the stream for episode ${episode_number}` });
+
 await anime_9_player.setRequestInterception(true);
 
 anime_9_player.on("request", requestHandler);
-
-await anime_9_player.goto(`https://9anime.vc${results[anime_selection]}`, {
-  waitUntil: "load",
-});
+anime_9_player.goto(
+  `https://9anime.vc${results[anime_selection]}?ep=${episodeData[episode_number]}`,
+  {
+    waitUntil: "load",
+  }
+);
 
 if (!resm3u8) await sleep(30000);
 anime_9_player.removeListener("request", requestHandler);
