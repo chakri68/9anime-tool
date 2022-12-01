@@ -89,7 +89,7 @@ const anime_selection_input = await inquirer.prompt({
 
 let { anime_selection } = anime_selection_input;
 
-spinner = createSpinner("Opening...").start();
+spinner.start({ text: "Searching for episodes..." });
 
 // await anime_9_page.goto(
 //   `https://9anime.vc${results[anime_selection]}`
@@ -129,7 +129,7 @@ function requestHandler(request) {
           response_size,
           response_body,
         };
-        console.log("STREAM FOUND!");
+        spinner.update({ text: "STREAM FOUND! Continuing..." });
         anime_9_player.removeListener("request", requestHandler);
         await anime_9_player.close();
       } else if (subtitlesMatcher.test(request_url)) {
@@ -141,7 +141,7 @@ function requestHandler(request) {
           response_size,
           response_body,
         };
-        console.log("SUBTITLES FOUND");
+        spinner.update({ text: "SUBTITLES FOUND! Continuing..." });
       }
       if (
         request.resourceType() == "stylesheet" ||
