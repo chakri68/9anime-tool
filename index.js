@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+import { writeFileSync } from "fs";
+
 import chalk from "chalk";
 import inquirer from "inquirer";
 import gradient from "gradient-string";
@@ -9,13 +11,19 @@ import { createSpinner } from "nanospinner";
 import request_client from "request-promise-native";
 import { sleep } from "./utils.js";
 import { createPage, openPage, startChrome } from "./funcs.js";
-import { syncConvertToMkv, asyncConvertToMkv } from "./ffmeg.js";
+import {
+  syncConvertToMkv,
+  asyncConvertToMkv,
+  syncAddSubtitles,
+} from "./ffmeg.js";
 
 const limitResults = 5;
 
 let spinner;
 const m3u8Matcher =
   /https:\/\/a-c-[0-9].dayimage.net\/_v[0-9]\/.*\/master.m3u8/;
+
+const subtitlesMatcher = /https:\/\/.*eng-[0-9].vtt/;
 
 const rainbowTitle = chalkAnimation.rainbow("9Anime CLI! \n");
 
@@ -96,6 +104,7 @@ spinner = createSpinner("Opening...").start();
 
 let anime_9_player = await createPage(browser);
 let resm3u8;
+let subtitles;
 
 function requestHandler(request) {
   request_client({
@@ -123,6 +132,16 @@ function requestHandler(request) {
         console.log("STREAM FOUND!");
         anime_9_player.removeListener("request", requestHandler);
         await anime_9_player.close();
+      } else if (subtitlesMatcher.test(request_url)) {
+        subtitles = {
+          request_url,
+          request_headers,
+          request_post_data,
+          response_headers,
+          response_size,
+          response_body,
+        };
+        console.log("SUBTITLES FOUND");
       }
       if (
         request.resourceType() == "stylesheet" ||
@@ -166,9 +185,21 @@ else {
 
 spinner.start({ text: "Downloading the file..." });
 
+// try {
+//   let { stdout, stderr } = await asyncConvertToMkv(resm3u8.request_url);
+// } catch (error) {
+//   spinner.error({ text: "Download failed..." });
+//   process.exit(1);
+// }
+
+// Write to a subtitle file if subtitles are found
+if (subtitles) writeFileSync("subtitles.vtt", subtitles.response_body);
+// Download the video
 try {
-  let { stdout, stderr } = await asyncConvertToMkv(resm3u8.request_url);
+  syncConvertToMkv(resm3u8.request_url);
+  if (subtitles) syncAddSubtitles("output.mkv", "subtitles.vtt");
 } catch (error) {
+  console.error(error);
   spinner.error({ text: "Download failed..." });
   process.exit(1);
 }
