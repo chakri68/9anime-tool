@@ -30,7 +30,6 @@ export async function startChrome(dev = false) {
       "--disable-site-isolation-trials",
       "--disable-features=site-per-process",
       "--process-per-site",
-      "--process-per-site",
     ],
   };
 
@@ -77,9 +76,12 @@ export async function openPage(browser) {
 
 export async function createPage(browser) {
   //Randomize User agent or Set a valid one
-  const userAgent = randomUseragent.getRandom();
+  const userAgent = randomUseragent.getRandom((ua) => {
+    return ua.browserName == "Firefox" && parseFloat(ua.browserVersion) >= 50;
+  });
   console.log({ userAgent });
-  const UA = userAgent || USER_AGENT;
+  // const UA = userAgent || USER_AGENT;
+  const UA = USER_AGENT;
   const page = await browser.newPage();
 
   //Randomize viewport size
