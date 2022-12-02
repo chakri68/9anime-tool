@@ -102,7 +102,7 @@ spinner.start({ text: "Searching for episodes..." });
 //   m3u8Matcher.test(request.url())
 // );
 
-let anime_9_player = await createPage(browser);
+let anime_9_home_player = await createPage(browser);
 let resm3u8;
 let subtitles;
 
@@ -165,15 +165,15 @@ function requestHandler(request) {
 }
 
 await Promise.all([
-  anime_9_player.goto(`https://9anime.vc${results[anime_selection]}`, {
+  anime_9_home_player.goto(`https://9anime.vc${results[anime_selection]}`, {
     waitUntil: "domcontentloaded",
   }),
-  anime_9_player.waitForSelector(
-    "section.block_area-episodes > div.block_area-content"
+  anime_9_home_player.waitForSelector(
+    "section.block_area-episodes > div.block_area-content .episodes-ul a"
   ),
 ]);
 
-let episodeData = await anime_9_player.evaluate(() => {
+let episodeData = await anime_9_home_player.evaluate(() => {
   let results = {};
   let eps, headerEps;
   // let headerEps = document.querySelectorAll(
@@ -197,7 +197,8 @@ let episodeData = await anime_9_player.evaluate(() => {
   return results;
 });
 
-if (episodeData) {
+await anime_9_home_player.close();
+
   spinner.success({ text: "Episodes found!" });
 } else {
   spinner.error({ text: "Something went wrong..." });
@@ -217,10 +218,12 @@ let { episode_number } = epNumSelection;
 
 spinner.start({ text: `Getting the stream for episode ${episode_number}` });
 
+let anime_9_player = await createPage(browser);
+
 await anime_9_player.setRequestInterception(true);
 
 anime_9_player.on("request", requestHandler);
-anime_9_player.goto(
+await anime_9_player.goto(
   `https://9anime.vc${results[anime_selection]}?ep=${episodeData[episode_number]}`,
   {
     waitUntil: "load",
