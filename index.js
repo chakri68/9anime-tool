@@ -107,9 +107,18 @@ let resm3u8;
 let subtitles;
 
 function requestHandler(request) {
+  // if (
+  //   request.isNavigationRequest() &&
+  //   request.frame() == anime_9_player.mainFrame()
+  // ) {
+  //   // Redirect request
+  //   console.log("Aborting: ", request.frame(), anime_9_player.mainFrame());
+  //   request.abort();
+  //   return;
+  // }
   request_client({
     uri: request.url(),
-    followAllRedirects: true,
+    // followAllRedirects: false,
     resolveWithFullResponse: true,
   })
     .then(async (response) => {
@@ -130,8 +139,6 @@ function requestHandler(request) {
           response_body,
         };
         spinner.update({ text: "STREAM FOUND! Continuing..." });
-        anime_9_player.removeListener("request", requestHandler);
-        await anime_9_player.close();
       } else if (subtitlesMatcher.test(request_url)) {
         subtitles = {
           request_url,
@@ -146,11 +153,6 @@ function requestHandler(request) {
       if (
         request.resourceType() == "stylesheet" ||
         request.resourceType() == "font"
-      ) {
-        request.abort();
-      } else if (
-        request.isNavigationRequest() &&
-        request.redirectChain().length !== 0
       ) {
         request.abort();
       } else {
@@ -179,16 +181,18 @@ let episodeData = await anime_9_home_player.evaluate(() => {
   // let headerEps = document.querySelectorAll(
   //   ".block_area-episodes .block_area-header-tabs ul.ranges li.ep-page-item"
   // );
-  if (!headerEps) {
-    eps = document.querySelectorAll(
-      ".block_area-episodes .block_area-content .episodes-ul a"
-    );
-  }
-  if (headerEps) {
-    results["count"] = parseInt(
-      Array.from(headerEps)[headerEps.length - 1].textContent.split("-").pop()
-    );
-  } else if (eps) {
+  // if (!headerEps) {
+  eps = document.querySelectorAll(
+    ".block_area-episodes .block_area-content .episodes-ul a"
+  );
+  console.log({ eps });
+  // }
+  // if (headerEps) {
+  //   results["count"] = parseInt(
+  //     Array.from(headerEps)[headerEps.length - 1].textContent.split("-").pop()
+  //   );
+  // } else
+  if (eps) {
     Array.from(eps).map((aEl) => {
       console.log(aEl.dataset.id);
       results[aEl.dataset.number] = aEl.dataset.id;
@@ -199,6 +203,7 @@ let episodeData = await anime_9_home_player.evaluate(() => {
 
 await anime_9_home_player.close();
 
+if (Object.keys(episodeData).length != 0) {
   spinner.success({ text: "Episodes found!" });
 } else {
   spinner.error({ text: "Something went wrong..." });
@@ -226,11 +231,14 @@ anime_9_player.on("request", requestHandler);
 await anime_9_player.goto(
   `https://9anime.vc${results[anime_selection]}?ep=${episodeData[episode_number]}`,
   {
-    waitUntil: "load",
+    waitUntil: "networkidle0",
   }
 );
 
-if (!resm3u8) await sleep(30000);
+if (!resm3u8) {
+  spinner.warn({ text: "Source not found... Retrying..." });
+  await sleep(30000);
+}
 anime_9_player.removeListener("request", requestHandler);
 
 if (resm3u8) spinner.success({ text: "Success!" });
